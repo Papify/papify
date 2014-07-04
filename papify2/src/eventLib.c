@@ -6,7 +6,7 @@ int eventSet1 = PAPI_NULL;
 int * eventSet;
 
 
-//int tot al1 = 0;						   /* total overflows */
+//int total1 = 0;						   /* total overflows */
 //int total2 = 0;						   /* total overflows */
 int total = 0;
 
