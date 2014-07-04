@@ -1,0 +1,482 @@
+papicode_CMakeLists.txt:
+cmake_minimum_required (VERSION 2.6)
+
+# Helps cmake to find where SDL libraries are saved (win32 only)
+if(WIN32)
+	set(ENV{CMAKE_PREFIX_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/windows/SDL-*\;${CMAKE_CURRENT_SOURCE_DIR}/windows/SDL_image-*)
+endif(WIN32)
+
+
+# Common include directories
+include_directories(
+	orcc/include
+)
+
+# Orcc library main files
+set(orcc_SRCS
+	orcc/src/accessFile.c
+	orcc/src/getopt.c
+	orcc/src/source.c
+	orcc/src/writer.c
+	orcc/src/orcc_util.c
+)
+
+set(orcc_HDRS
+	orcc/include/orcc_util.h
+	orcc/include/orcc_types.h
+)
+
+# Build library without any external library required (SDL, pthread, etc)
+if(NO_EXTERNAL_DEPENDENCIES)
+
+	add_library (orcc STATIC ${orcc_SRCS} ${orcc_HDRS})
+
+# Build library with all features (require external libraries)
+else(NO_EXTERNAL_DEPENDENCIES)
+
+	# Common packages required
+	find_package(SDL REQUIRED)
+	find_package(SDL_image REQUIRED)
+	find_package(Threads REQUIRED)
+	
+    # find papi library
+    find_library(papi_LIBRARY papi)	
+    
+    # set papi include directory
+    set(PAPI_INCLUDE_DIR /usr/local/include)
+
+    # adding papi include directory to the initial list
+	include_directories(
+		${SDL_INCLUDE_DIR}
+		${SDLIMAGE_INCLUDE_DIR}
+		${THREADS_INCLUDE_DIR}
+		roxml/include
+        ${PAPI_INCLUDE_DIR}		
+	)
+
+	file ( GLOB roxml_SRCS roxml/src/*.c )
+	add_library (roxml STATIC ${roxml_SRCS})
+
+	list(APPEND orcc_SRCS
+		orcc/src/compare.c
+		orcc/src/compareyuv.c
+		orcc/src/scheduler.c
+		orcc/src/display.c
+		orcc/src/fpsPrint.c
+		orcc/src/genetic.c
+		orcc/src/thread.c
+		
+        # new library added
+        orcc/src/eventLib.c		
+	)
+
+	list(APPEND orcc_HDRS
+		orcc/include/orcc_fifo.h
+		orcc/include/orcc_fifo_socket.h
+		orcc/include/orcc_generic_fifo.h
+		orcc/include/orcc_generic_fifo.inl
+		orcc/include/orcc_generic_fifo_socket.h
+		orcc/include/orcc_genetic.h
+		orcc/include/orcc_scheduler.h
+		orcc/include/orcc_scheduler.inl
+		orcc/include/orcc_thread.h
+		orcc/include/socket.h
+
+        orcc/include/eventLib.h	
+	)
+
+	add_library (orcc STATIC ${orcc_SRCS} ${orcc_HDRS})
+	
+    # linking with papi libraries	
+	target_link_libraries(orcc roxml ${CMAKE_THREAD_LIBS_INIT} ${SDL_LIBRARY} ${papi_LIBRARY})
+
+endif(NO_EXTERNAL_DEPENDENCIES)
+//endofcode
+////////////////////////////////////////////////////
+
+papicode_eventh:
+/* Standard headers for PAPI test applications.
+	This file is customized to hide Windows / Unix differences.
+*/
+
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <unistd.h>
+#include <sys/wait.h>
+#if (!defined(NO_DLFCN) && !defined(_BGL) && !defined(_BGP))
+#include <dlfcn.h>
+#endif
+
+#include <errno.h>
+#include <memory.h>
+#if !defined(__FreeBSD__) && !defined(__APPLE__)
+#include <malloc.h>
+#endif
+#include <assert.h>
+#include <string.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/time.h>
+//#include <math.h>
+
+#include <pthread.h>
+#include "papiStdEventDefs.h"
+#include <papi.h>
+
+#define RED    "\033[1;31m"
+#define YELLOW "\033[1;33m"
+#define GREEN  "\033[1;32m"
+#define NORMAL "\033[0m"
+
+
+#define OVER_FMT    "handler(%d ) Overflow at %p! bit=0x%llx \n"
+
+
+/*  Variable to hold reporting status
+	if TRUE, output is suppressed
+	if FALSE output is sent to stdout
+	initialized to FALSE
+	declared here so it can be available globally
+*/
+//int TESTS_QUIET = 0;
+static int TESTS_COLOR = 0;
+//static int TEST_WARN = 0;
+
+//STRUCTURES
+typedef struct papi_action_s {
+	char *action_id;
+	int eventCodeSetSize;
+	int *eventCodeSet; //size = eventCodeSetSize
+	unsigned long *eventSet; //size = eventCodeSetSize
+	unsigned long *counterValues; //size = eventCodeSetSize
+} papi_action_s;
+//endofcode
+////////////////////////////////////////////////////
+
+papicode_eventc:
+#include "eventLib.h"
+#include "papi.h"
+
+int eventSet0 = PAPI_NULL;
+int eventSet1 = PAPI_NULL;
+int * eventSet;
+
+
+//int total1 = 0;						   /* total overflows */
+//int total2 = 0;						   /* total overflows */
+int total = 0;
+
+void structure_test(papi_action_s *someAction){
+	int i;
+	printf("Action name: %s\n", someAction->action_id);
+	printf("Event Code Set:\n");
+	for(i=0; i<someAction->eventCodeSetSize; i++){
+		printf("\t-%s\n", someAction->eventCodeSet[i]);
+	}
+}
+
+
+void handler( int EventSet, void *address, long long overflow_vector, void *context)
+{
+	( void ) context;
+
+	/*if ( !TESTS_QUIET ) {
+		fprintf( stderr, OVER_FMT, EventSet, address, overflow_vector );
+	}*/
+
+	/* it should be more elaborated to automate the process.
+	if (threadID == 0)
+		total1++;
+	else
+		total2++; */
+	total++;
+}
+
+
+static void test_fail( char *file, int line, char *call, int retval ) {
+
+	int line_pad;
+	char buf[128];
+
+	line_pad = (int) (50 - strlen(file));
+	if (line_pad < 0) {
+		line_pad = 0;
+	}
+
+	memset(buf, '\0', sizeof(buf));
+
+	if (TESTS_COLOR) {
+		fprintf(stdout, "%-*s %sFAILED%s\nLine # %d\n", line_pad, file, RED,
+				NORMAL, line);
+	} else {
+		fprintf(stdout, "%-*s FAILED\nLine # %d\n", line_pad, file, line);
+	}
+
+	if (retval == PAPI_ESYS) {
+		sprintf(buf, "System error in %s", call);
+		perror(buf);
+	} else if (retval > 0) {
+		fprintf(stdout, "Error: %s\n", call);
+	} else if (retval == 0) {
+#if defined(sgi)
+		fprintf( stdout, "SGI requires root permissions for this test\n" );
+#else
+		fprintf(stdout, "Error: %s\n", call);
+#endif
+	} else {
+		fprintf(stdout, "Error in %s: %s\n", call, PAPI_strerror(retval));
+	}
+
+	fprintf(stdout, "\n");
+
+	/* NOTE: Because test_fail is called from thread functions,
+	 calling PAPI_shutdown here could prevent some threads
+	 from being able to free memory they have allocated.
+	 */
+
+	/* This is stupid.  Threads are the rare case */
+	/* and in any case an exit() should clear everything out */
+	/* adding back the exit() call */
+
+	exit(1);
+}
+
+static void init_multiplex( void ) {
+
+	int retval;
+	const PAPI_hw_info_t *hw_info;
+	const PAPI_component_info_t *cmpinfo;
+
+	/* Initialize the library */
+
+	/* for now, assume multiplexing on CPU compnent only */
+	cmpinfo = PAPI_get_component_info(0);
+	if (cmpinfo == NULL) {
+		test_fail(__FILE__, __LINE__, "PAPI_get_component_info", 2);
+	}
+
+	hw_info = PAPI_get_hardware_info();
+	if (hw_info == NULL) {
+		test_fail(__FILE__, __LINE__, "PAPI_get_hardware_info", 2);
+	}
+
+	if ((strstr(cmpinfo->name, "perfctr.c")) && (hw_info != NULL )
+			&& strcmp(hw_info->model_string, "POWER6") == 0) {
+		retval = PAPI_set_domain(PAPI_DOM_ALL);
+		if (retval != PAPI_OK) {
+			test_fail(__FILE__, __LINE__, "PAPI_set_domain", retval);
+		}
+	}
+	retval = PAPI_multiplex_init();
+	if (retval != PAPI_OK) {
+		test_fail(__FILE__, __LINE__, "PAPI multiplex init fail\n", retval);
+	}
+}
+
+
+void event_init(void) {
+
+	int retval;
+
+	// library initialization
+	retval = PAPI_library_init( PAPI_VER_CURRENT );
+	if ( retval != PAPI_VER_CURRENT )
+		test_fail( __FILE__, __LINE__, "PAPI_library_init", retval );
+
+    // multiplex initialization
+	init_multiplex(  );
+
+	// place for initialization in case one makes use of threads
+	retval = PAPI_thread_init((unsigned long (*)(void))(pthread_self));
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_thread_init", retval );
+
+    printf("event_init done \n");
+
+
+}
+
+//void event_create_eventList(int eventCodeSetSize, int *eventCodeSet, int threadID, long long *times_ini) {
+void event_create_eventList(int *eventSet, int eventCodeSetSize, int *eventCodeSet, int threadID) { //done?
+
+	int retval, i, maxNumberHwCounters, eventCodeSetMaxSize;
+	PAPI_event_info_t info;
+
+	maxNumberHwCounters = PAPI_get_opt( PAPI_MAX_HWCTRS, NULL );
+	printf("Max number of hardware counters = %d \n", maxNumberHwCounters);
+
+	eventCodeSetMaxSize = PAPI_get_opt( PAPI_MAX_MPX_CTRS, NULL );
+	printf("Max number of multiplexed counters = %d \n", eventCodeSetMaxSize);
+
+    if ( eventCodeSetMaxSize < eventCodeSetSize)
+		test_fail( __FILE__, __LINE__, "eventCodeSetMaxSize < eventCodeSetSize, too many performance events defined! ", retval );
+
+    retval = PAPI_register_thread();
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_register_thread", retval );
+
+	// it should be more elaborated to automate the process.
+/*	if (threadID == 0)
+		eventSet = &eventSet0;
+	else
+		eventSet = &eventSet1;*/
+
+	retval = PAPI_create_eventset( eventSet );
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_create_eventset", retval );
+
+	retval = PAPI_assign_eventset_component( *eventSet, 0 );
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_assign_eventset_component", retval );
+
+	retval = PAPI_set_multiplex( *eventSet );
+    if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_set_multiplex", retval );
+
+	for (i = 0; i < eventCodeSetSize; i++) {
+		retval = PAPI_get_event_info(eventCodeSet[i], &info);
+		if ( retval != PAPI_OK )
+			test_fail( __FILE__, __LINE__, "PAPI_get_event_info", retval );
+
+		retval = PAPI_add_event( *eventSet, info.event_code);
+		if ( retval != PAPI_OK )
+			test_fail( __FILE__, __LINE__, "PAPI_add_event", retval );
+		else
+			printf("Adding %s \n", info.symbol);
+
+	}
+    //times_ini[0] = PAPI_get_real_usec();
+    //times_ini[1] = PAPI_get_real_cyc();
+
+    printf("event_create_eventList done \n");
+}
+
+void event_start(int *eventSet, int threadID){ //done?
+
+	int retval;
+//	int *EventSet;
+	// it should be more elaborated to automate the process.
+/*	if (threadID == 0){
+		eventSet = &eventSet0;
+	}
+	else{
+		eventSet = &eventSet1;
+	}*/
+
+	retval = PAPI_start( *eventSet );
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_start",retval );
+	
+    //printf("event_start done \n");
+}
+void overflows_start(int threadID){
+
+	int retval;
+	int *EventSet;
+	// it should be more elaborated to automate the process.
+	if (threadID == 0){
+		eventSet = &eventSet0;
+		EventSet = &eventSet0;
+	}
+	else{
+		eventSet = &eventSet1;
+		EventSet = &eventSet1;
+	}
+
+	retval = PAPI_overflow( *EventSet, PAPI_TOT_INS, 1000000, 0, handler );
+
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_overflow", retval );
+
+    printf("There has been %d overflows until now\n",total);
+}
+
+void event_stop(int *eventSet, int eventCodeSetSize, long long *PMC, int threadID) { //done?
+
+	int i, retval;
+//	FILE *eventFile;
+
+	// it should be more elaborated to automate the process.
+	/*if (threadID == 0)
+		eventSet = &eventSet0;
+	else
+		eventSet = &eventSet1;*/
+
+	retval = PAPI_stop( *eventSet, PMC );
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_stop", retval );
+
+/*	eventFile = fopen("event.txt","a+");
+	if(!eventFile)
+		printf("Cannot open the file 'event.txt'!\n");*/
+
+/*	for(i=0; i < eventCodeSetSize; i++)
+		fprintf(eventFile, "%lld \t",PMC[i]);*/
+
+//    fclose(eventFile);
+
+    //printf("event_stop done \n");
+}
+
+void event_destroy_eventList(int threadID, long long *times_fin) {
+
+	int retval;
+
+	// it should be more elaborated to automate the process.
+	if (threadID == 0)
+		eventSet = &eventSet0;
+	else
+		eventSet = &eventSet1;
+
+	retval = PAPI_cleanup_eventset( *eventSet );
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_cleanup_eventset", retval );
+
+    times_fin[0] = PAPI_get_real_usec();
+    times_fin[1] = PAPI_get_real_cyc();
+
+    printf("event_destroy_eventList done \n");
+}
+
+void overflows_stop(int threadID){
+
+	int retval;
+
+	// it should be more elaborated to automate the process.
+	if (threadID == 0)
+		eventSet = &eventSet0;
+	else
+		eventSet = &eventSet1;
+
+	retval = PAPI_destroy_eventset( eventSet );
+	if ( retval != PAPI_OK )
+		test_fail( __FILE__, __LINE__, "PAPI_destroy_eventset", retval );
+
+    //printf("El hilo 0 se ha desbordado %d veces \nEl hilo 1 se ha desbordado %d veces", total1,total2);
+    //printf("There has been %d overflows at the end of the application in thread\n",total, threadID);
+    printf("There has been %d overflows at the end of the thread\n",total, threadID);
+}
+
+void execute_task(int threadID){
+
+	int i;
+	int loopLength_0 = 10000;
+	int loopLength_1 = 10000000;
+	double x=1.0;
+
+	if (threadID == 0){
+		for(i=0; i < loopLength_0; i++ ){
+			x=2.0*x;
+		}
+	}
+	else{
+		for(i=0; i < loopLength_1; i++ ){
+			x=2.0*x;
+		}
+	}
+
+    printf("execute_task done \n");
+}
+//endofcode
+////////////////////////////////////////////////////
