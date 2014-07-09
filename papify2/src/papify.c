@@ -90,12 +90,12 @@ int papify_main(int argc, char *project_path, char *exec)
 
 	papify(project);
 
-	//Copying new CMakeLists.txt
+	//TODO Copying new CMakeLists.txt
 	char *somepath = malloc(strlen(project->project_path)+strlen("/libs/CMakeLists.txt")+2);
-	strcpy(somepath,project->project_path);
+	/*strcpy(somepath,project->project_path);
 	strcat(somepath,"/libs/CMakeLists.txt");
 	if(create_file(somepath, l_cmakelists)!=0) printf("Could not create CMakeLists.txt.. :(\n", somepath);
-	free(somepath);
+	free(somepath);*/
 
 	//Copying eventLib
 	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc/src/eventLib.c")+2);
