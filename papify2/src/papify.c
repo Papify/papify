@@ -90,23 +90,23 @@ int papify_main(int argc, char *project_path, char *exec)
 
 	papify(project);
 
-	//TODO Copying new CMakeLists.txt
-	char *somepath = malloc(strlen(project->project_path)+strlen("/libs/CMakeLists.txt")+2);
-	/*strcpy(somepath,project->project_path);
-	strcat(somepath,"/libs/CMakeLists.txt");
-	if(create_file(somepath, l_cmakelists)!=0) printf("Could not create CMakeLists.txt.. :(\n", somepath);
-	free(somepath);*/
+	char *somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc-native/CMakeLists.txt")+2);
+	strcpy(somepath,project->project_path);
+	strcat(somepath,"/libs/orcc-native/CMakeLists.txt");
+	if(editCMakelists(somepath)) printf("Could not create CMakeLists.txt.. :(\n");
+	//if(create_file(somepath, l_cmakelists)!=0) printf("Could not create CMakeLists.txt.. :(\n", somepath);
+	free(somepath);
 
 	//Copying eventLib
-	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc/src/eventLib.c")+2);
+	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc-native/src/eventLib.c")+2);
 	strcpy(somepath,project->project_path);
-	strcat(somepath,"/libs/orcc/src/eventLib.c");
+	strcat(somepath,"/libs/orcc-native/src/eventLib.c");
 	if(create_file(somepath, l_eventc)!=0) printf("Could not create %s.. maybe the folder doesn't exist?\n", somepath);
 	free(somepath);
 
-	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc/include/eventLib.h")+2);
+	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc-native/include/eventLib.h")+2);
 	strcpy(somepath,project->project_path);
-	strcat(somepath,"/libs/orcc/include/eventLib.h");
+	strcat(somepath,"/libs/orcc-native/include/eventLib.h");
 	if(create_file(somepath, l_eventh)!=0) printf("Could not create %s.. maybe the folder doesn't exist?\n", somepath);
 	free(somepath);
 

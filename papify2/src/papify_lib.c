@@ -232,7 +232,7 @@ char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, i
 			(*open_brackets)++;
 			if((someString = strtok(buf, "("))!=NULL){
 				someName = strrchr(someString, ' ')+1;
-				if (DEBUG) printf("\tFound action \"%s\". brakets = %d \n\tChecking if it needs PAPI code..", someName, *open_brackets);
+				if (DEBUG) printf("\tFound action \"%s\".\n\tChecking if it needs PAPI code..", someName);
 				for(i = 0;i<actor->actions_nb;i++){
 					if(strcmp(someName,actor->actions[i]->action_name)==0) {
 						if (DEBUG) printf(" yes, generating.\n");
