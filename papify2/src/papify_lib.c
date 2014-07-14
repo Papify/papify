@@ -39,7 +39,7 @@ int papify(struct project_s *project){
 
 			strcpy(actor_cpy_path, project->actors[i]->actor_path);
 			strcat(actor_cpy_path, ".papi.c");
-			actor_cpy = fopen(actor_cpy_path,"w"); //this is a temporal file that contains the actor code with the papi code added, will later replace the actual actor
+			actor_cpy = fopen(actor_cpy_path,"w"); //this is a temp file that contains the actor code with the papi code added, will later replace the actual actor
 
 			if(DEBUG) printf("Copying initializes in %s\n", project->actors[i]->actor_path);
 
@@ -127,12 +127,12 @@ int isblankline(char *line){
 		return 0;
 }
 
-int copy_after(FILE *actor_src, FILE* actor_cpy, char *keyline) {
+int copy_until_bracket(FILE *actor_src, FILE* actor_cpy, char *keyline) {
 	char buf[1500];
-	do{
+	/*do{
 		fgets(buf,1500, actor_src);
 		fputs(buf,actor_cpy);
-	} while(strncmp(buf,keyline,strlen(keyline))!=0);
+	} while(strncmp(buf,keyline,strlen(keyline))!=0);*/
 
 	do{
 		fgets(buf,1500, actor_src);
@@ -252,126 +252,12 @@ char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, i
 	return NULL;
 }
 
-void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
-	int i, k;
-	char *actionName;
-	int THREADED = 0;
-	char buf[1500];
+void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int* THREADED){
+	int k, i;
 
-
-	//Writing includes
-	if(DEBUG) printf("Generating includes and variables in %s\n", actor->actor_path);
-	if (copy_until(actor_src, actor_cpy, "#include")==1){
-		THREADED = 1;
-		if(DEBUG) printf("Actor is threaded!\n");
-	}
-	fputs("#include \"eventLib.h\" //PAPI\n\n", actor_cpy);
-	/*old
-	for(i=0;i<actor->actions_nb;i++) {
-		fprintf(actor_cpy,"FILE* papi_output_%s_%s;\n",actor->actor_name, actor->actions[i]->action_name);
-	}*/
-	fprintf(actor_cpy,"FILE* papi_output_%s;\n",actor->actor_name);
-
-	fputs("\n", actor_cpy);
-	fprintf(actor_cpy,"papi_action_s *Papi_actions_%s;//PAPI\n", actor->actor_name);
-
-	//Writing in action
-	if(DEBUG) printf("Generating actions code\n");
-	int open_brackets = 0;
-	int action_number = 3;
-	if (copy_immediately_after(actor_src, actor_cpy, "// Actions")==1) {
-		THREADED = 1;
-		if(DEBUG) printf("Actor is threaded!\n");
-	}
-	for(i=0;i<actor->actions_nb;i++){
-		if((actionName = get_next_action(actor_src, actor_cpy, actor, &open_brackets, &action_number))==NULL) {
-			printf("WARNING: One or more actions were not found in the actor\n");
-			break;
-		}
-		find_next_blank(actor_src, actor_cpy);
-		if (THREADED)
-			fprintf(actor_cpy, "\tint papi_local_THREAD_ID;\n"
-				"\tpapi_local_THREAD_ID = THREAD_ID;\n");
-		else
-			fprintf(actor_cpy, "\tint papi_local_THREAD_ID;\n"
-				"\tpapi_local_THREAD_ID = -1;\n");
-		fprintf(actor_cpy, "\tevent_start(&(Papi_actions_%s[%d].eventSet), papi_local_THREAD_ID); //PAPI\n", actor->actor_name, action_number);
-
-		find_end_of_function(actor_src, actor_cpy, &open_brackets);
-		fprintf(actor_cpy, "\t//PAPI\n");
-
-		if (THREADED)
-			fprintf(actor_cpy, "\tpapi_local_THREAD_ID = THREAD_ID;\n");
-
-		fprintf(actor_cpy, "\tevent_stop(&(Papi_actions_%s[%d].eventSet), "
-				"Papi_actions_%s[%d].eventCodeSetSize, "
-				"Papi_actions_%s[%d].counterValues, "
-				"papi_local_THREAD_ID);\n",
-				actor->actor_name, action_number, actor->actor_name, action_number, actor->actor_name, action_number);
-
-
-		//screen output..
-		/*fprintf(actor_cpy,"\tprintf(\"Thread = %%d\tAction = %%s\"\n");
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
-			fprintf(actor_cpy,"\t\t\"\\t%s = %%lu\"\n",actor->actions[action_number]->events[k]);
-		}
-
-		fseek(actor_cpy, -2, SEEK_CUR);
-		fputs("\\n\"\n",actor_cpy);
-
-		fseek(actor_cpy, -1, SEEK_CUR);
-		fprintf(actor_cpy,",\n\t\tpapi_local_THREAD_ID, Papi_actions[%d].action_id,\n", action_number);
-
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
-			fprintf(actor_cpy,"\t\tPapi_actions[%d].counterValues[%d], \n",i,k);
-		}*/
-
-
-		//file (csv) output..
-		/*old
-		 * fprintf(actor_cpy,"\tfprintf(papi_output_%s_%s,\"\\\"%%d\\\",\\\"%%s\\\",",actor->actor_name, actor->actions[action_number]->action_name);
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
-			fprintf(actor_cpy,"\\\"%%lu\\\",");
-		}
-		 */
-		fprintf(actor_cpy,"\tpapi_output_%s = fopen(\"papi-output/papi_output_%s.csv\",\"a+\");\n",actor->actor_name, actor->actor_name);
-		fprintf(actor_cpy,"\tfprintf(papi_output_%s,\"\\\"%%s\\\";\\\"%%s\\\";",actor->actor_name);
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
-			fprintf(actor_cpy,"\\\"%%lu\\\";");
-		}
-
-		fseek(actor_cpy, -1, SEEK_CUR);
-		fputs("\\n\"\n",actor_cpy);
-
-		fseek(actor_cpy, -1, SEEK_CUR);
-		fprintf(actor_cpy,",\n\t\t\"%s\", Papi_actions_%s[%d].action_id,\n", actor->actor_name, actor->actor_name, action_number);
-
-
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
-			fprintf(actor_cpy,"\t\tPapi_actions_%s[%d].counterValues[%d], \n",actor->actor_name,i,k);
-		}
-
-		fseek(actor_cpy, -3, SEEK_CUR);
-		fprintf(actor_cpy,");\n\t//PAPI\n");
-
-		fprintf(actor_cpy,"\tfclose(papi_output_%s);\n",actor->actor_name);
-
-		if (open_brackets != 0) {
-			while (open_brackets != 0) {
-				fgets(buf,1500, actor_src);
-				fputs(buf, actor_cpy);
-				if(strstr(buf, "{")!=NULL) open_brackets++;
-				if(strstr(buf, "}")!=NULL) open_brackets--;
-			}
-			fseek(actor_src, 0-strlen(buf), SEEK_CUR);
-			fseek(actor_cpy, 0-strlen(buf), SEEK_CUR);
-		}
-	}
-
-	//Writing initializes:
 	if(DEBUG) printf("Generating Initializing code\n");
 
-	copy_after(actor_src, actor_cpy, "// Initializes");
+	copy_until_bracket(actor_src, actor_cpy, "// Initializes");//TODO get rid of 3rd argument here
 	fputs("\t//PAPI INITIALIZING CODE\n", actor_cpy);
 	fputs("\ti32 papi_local_THREAD_ID;\n", actor_cpy);
 	fputs("\tmkdir(\"papi-output\", 0777);\n", actor_cpy);
@@ -423,7 +309,7 @@ void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
 
 	fprintf(actor_cpy,"\n\tevent_init();\n");
 
-	if (THREADED)
+	if (*THREADED)
 		fprintf(actor_cpy,"\tpapi_local_THREAD_ID = THREAD_ID;\n");
 	else
 		fprintf(actor_cpy, "\tpapi_local_THREAD_ID = -1;\n");
@@ -436,7 +322,141 @@ void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
 
 	fputs("\t//END OF PAPI CODE\n", actor_cpy);
 
-	clone(actor_src, actor_cpy);
+}
+
+void papiwrite_actions(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int* THREADED){
+	char buf[1500];
+	int k, i;
+	char *actionName;
+
+	if(DEBUG) printf("Generating actions code\n");
+	int open_brackets = 0;
+	int action_number = 3;
+	/*if (copy_immediately_after(actor_src, actor_cpy, "// Actions")==1) {
+		*THREADED = 1;
+		if(DEBUG) printf("Actor is threaded!\n");
+	}*/
+	for(i=0;i<actor->actions_nb;i++){
+		if((actionName = get_next_action(actor_src, actor_cpy, actor, &open_brackets, &action_number))==NULL) {
+			printf("WARNING: One or more actions were not found in the actor\n");
+			break;
+		}
+		find_next_blank(actor_src, actor_cpy);
+		if (*THREADED)
+			fprintf(actor_cpy, "\tint papi_local_THREAD_ID;\n"
+				"\tpapi_local_THREAD_ID = THREAD_ID;\n");
+		else
+			fprintf(actor_cpy, "\tint papi_local_THREAD_ID;\n"
+				"\tpapi_local_THREAD_ID = -1;\n");
+		fprintf(actor_cpy, "\tevent_start(&(Papi_actions_%s[%d].eventSet), papi_local_THREAD_ID); //PAPI\n", actor->actor_name, action_number);
+
+		find_end_of_function(actor_src, actor_cpy, &open_brackets);
+		fprintf(actor_cpy, "\t//PAPI\n");
+
+		if (*THREADED)
+			fprintf(actor_cpy, "\tpapi_local_THREAD_ID = THREAD_ID;\n");
+
+		fprintf(actor_cpy, "\tevent_stop(&(Papi_actions_%s[%d].eventSet), "
+				"Papi_actions_%s[%d].eventCodeSetSize, "
+				"Papi_actions_%s[%d].counterValues, "
+				"papi_local_THREAD_ID);\n",
+				actor->actor_name, action_number, actor->actor_name, action_number, actor->actor_name, action_number);
+
+
+		//screen output..
+		/*fprintf(actor_cpy,"\tprintf(\"Thread = %%d\tAction = %%s\"\n");
+		for(k=0;k<actor->actions[action_number]->events_nb;k++){
+			fprintf(actor_cpy,"\t\t\"\\t%s = %%lu\"\n",actor->actions[action_number]->events[k]);
+		}
+
+		fseek(actor_cpy, -2, SEEK_CUR);
+		fputs("\\n\"\n",actor_cpy);
+
+		fseek(actor_cpy, -1, SEEK_CUR);
+		fprintf(actor_cpy,",\n\t\tpapi_local_THREAD_ID, Papi_actions[%d].action_id,\n", action_number);
+
+		for(k=0;k<actor->actions[action_number]->events_nb;k++){
+			fprintf(actor_cpy,"\t\tPapi_actions[%d].counterValues[%d], \n",i,k);
+		}*/
+
+
+		//file (csv) output..
+		fprintf(actor_cpy,"\tpapi_output_%s = fopen(\"papi-output/papi_output_%s.csv\",\"a+\");\n",actor->actor_name, actor->actor_name);
+		fprintf(actor_cpy,"\tfprintf(papi_output_%s,\"\\\"%%s\\\";\\\"%%s\\\";",actor->actor_name);
+		for(k=0;k<actor->actions[action_number]->events_nb;k++){
+			fprintf(actor_cpy,"\\\"%%lu\\\";");
+		}
+
+		fseek(actor_cpy, -1, SEEK_CUR);
+		fputs("\\n\"\n",actor_cpy);
+
+		fseek(actor_cpy, -1, SEEK_CUR);
+		fprintf(actor_cpy,",\n\t\t\"%s\", Papi_actions_%s[%d].action_id,\n", actor->actor_name, actor->actor_name, action_number);
+
+
+		for(k=0;k<actor->actions[action_number]->events_nb;k++){
+			fprintf(actor_cpy,"\t\tPapi_actions_%s[%d].counterValues[%d], \n",actor->actor_name,i,k);
+		}
+
+		fseek(actor_cpy, -3, SEEK_CUR);
+		fprintf(actor_cpy,");\n\t//PAPI\n");
+
+		fprintf(actor_cpy,"\tfclose(papi_output_%s);\n",actor->actor_name);
+
+		if (open_brackets != 0) {
+			while (open_brackets != 0) {
+				fgets(buf,1500, actor_src);
+				fputs(buf, actor_cpy);
+				if(strstr(buf, "{")!=NULL) open_brackets++;
+				if(strstr(buf, "}")!=NULL) open_brackets--;
+			}
+			fseek(actor_src, 0-strlen(buf), SEEK_CUR);
+			fseek(actor_cpy, 0-strlen(buf), SEEK_CUR);
+		}
+	}
+}
+
+void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
+	int i, k;
+	char *actionName;
+	int THREADED = 0;
+	char buf[1500];
+
+	//Writing includes
+	if(DEBUG) printf("Generating includes and variables in %s\n", actor->actor_path);
+	if (copy_until(actor_src, actor_cpy, "#include")==1){
+		THREADED = 1;
+		if(DEBUG) printf("Actor is threaded!\n");
+	}
+	fputs("#include \"eventLib.h\" //PAPI\n\n", actor_cpy);
+	fprintf(actor_cpy,"FILE* papi_output_%s;\n",actor->actor_name);
+
+	fputs("\n", actor_cpy);
+	fprintf(actor_cpy,"papi_action_s *Papi_actions_%s;//PAPI\n", actor->actor_name);
+
+	int stat_actions = 1;
+	int stat_init = 1;
+
+	while(fgets(buf,1500, actor_src)!=NULL) {
+			if(strstr(buf, "// Actions")!=NULL && stat_actions){
+				fputs(buf, actor_cpy);
+				papiwrite_actions(actor_src,actor_cpy, actor, &THREADED);
+				stat_actions = 0;
+			}
+			else if(strstr(buf, "// Initializes")!=NULL && stat_init){
+				fputs(buf, actor_cpy);
+				papiwrite_init(actor_src,actor_cpy, actor, &THREADED);
+				stat_init = 0;
+			}
+			else fputs(buf, actor_cpy);
+	}
+
+
+	//Writing in action
+
+	//Writing initializes:
+
+	//clone(actor_src, actor_cpy);
 
 }
 
@@ -549,7 +569,7 @@ char *findMappingFile(char *path) {
         }
     }
     closedir (pDir);
-    //TEMP FIX: +500 SOLVE THIS!
+    //TODO TEMP FIX: +500 SOLVE THIS!
     char *result = malloc(strlen(pDirent->d_name)+strlen(path_to_src)+500); //+1 for the zero-terminator CHECK ERRORS MALLOC
     strcpy(result, path_to_src);
     free(path_to_src);
@@ -592,13 +612,13 @@ int find_actor(char* name,  struct project_s *project) {
 	return -1;
 }
 
-void identify_actors(char *mapping_file_path, struct project_s *project) {
+int identify_actors(char *mapping_file_path, struct project_s *project) {
 	int j, k, n,size_of_config, size_of_partitioning, size_of_partition, size_of_papi, len, actor_num, number_of_actions, number_of_events;
 	int num = 0;
 	node_t *configuration, *partitioning, *partition, *instance, *papi, *actor_instance, *action, *event;
 
-
 	//*actors->actor_path = malloc((actors->num) * sizeof (char *)+1);
+	project->papify_all=NULL;
 
 	configuration = roxml_load_doc(mapping_file_path); //a: LIBROXML node http://www.libroxml.net/public-api.html
 	if (configuration == NULL) {
@@ -634,12 +654,36 @@ void identify_actors(char *mapping_file_path, struct project_s *project) {
 		set_papify_actor(project, j, 0);
 	}
 
+	int mode_papify_all = 0;
+
 	for (j = 0; j < size_of_papi; j++) {
 		actor_instance = roxml_get_chld(papi, NULL, j);
-		if(DEBUG) printf("PAPI actor instance, id = '%s'\n", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len));
+		if(!mode_papify_all && strcmp("papify_all", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len))==0) {
+			mode_papify_all = 1;
+			printf("PAPI code for the following events will be added in EVERY action of EVERY actor\n");
+		}
+		else if(DEBUG) printf("PAPI actor instance, id = '%s'\n", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len));
 		actor_num = find_actor(roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len), project);
-		if (actor_num != -1){
-			set_papify_actor(project, actor_num, 1);
+		if ((actor_num != -1) || (mode_papify_all == 1)){
+			if (mode_papify_all==0) set_papify_actor(project, actor_num, 1);
+			else {
+				actor_num = 0;
+				set_papify_actor(project, actor_num, 1);
+			}
+
+			if(mode_papify_all){
+				number_of_events = roxml_get_chld_nb(actor_instance);
+				if(DEBUG) printf("	Found %d events\n", number_of_events);
+				project->papify_all = malloc(sizeof(action_s)+sizeof(char*)*number_of_events);
+				project->papify_all->events_nb = number_of_events;
+				for (n = 0; n < number_of_events; n++) {
+					event = roxml_get_chld(actor_instance, NULL, n);
+					project->papify_all->events[n] = malloc(sizeof(strlen(roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len)))+1);
+					strcpy(project->papify_all->events[n],roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len));
+					if(DEBUG) printf("		event id = '%s'\n", roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len));
+				}
+				return 1;
+			}
 
 			number_of_actions = roxml_get_chld_nb(actor_instance);
 			project->actors[actor_num]->actions_nb = number_of_actions;
@@ -673,6 +717,8 @@ void identify_actors(char *mapping_file_path, struct project_s *project) {
 	roxml_release(RELEASE_LAST);
 	// here no memory leak can occur.
 	roxml_close(configuration);
+
+	return 0;
 }
 
 void structures_test(struct project_s* project){
@@ -687,23 +733,38 @@ void structures_test(struct project_s* project){
 	printf("Project src path: %s\n", project->src_path);
 	printf("Number of actors: %d\n", project->actors_nb);
 	printf("\n");
-	for(j=0; j<project->actors_nb;j++){
-		printf("-Actor:\tActor path: %s\n", project->actors[j]->actor_path);
-		(project->papify[j])? strcpy(papi,"yes"):strcpy(papi,"no");
-		printf("	PAPI code will be included: %s\n",papi);
-		if (project->papify[j]) {
-		printf("	Number of actions: %d\n", project->actors[j]->actions_nb);
-		printf("\n");
-			for(k=0; k<project->actors[j]->actions_nb;k++){
-				printf("\tAction: Name: %s\n", project->actors[j]->actions[k]->action_name);
-				printf("		Number of events: %d\n", project->actors[j]->actions[k]->events_nb);
-				printf("\t\tEvents:\n");
-				for(n=0; n<project->actors[j]->actions[k]->events_nb;n++){
-					printf("\t\t\t%s\n",project->actors[j]->actions[k]->events[n]);
+
+	if(project->papify_all == NULL){
+		for(j=0; j<project->actors_nb;j++){
+			printf("-Actor:\tActor path: %s\n", project->actors[j]->actor_path);
+			(project->papify[j])? strcpy(papi,"yes"):strcpy(papi,"no");
+			printf("	PAPI code will be included: %s\n",papi);
+			if (project->papify[j]) {
+			printf("	Number of actions: %d\n", project->actors[j]->actions_nb);
+			printf("\n");
+				for(k=0; k<project->actors[j]->actions_nb;k++){
+					printf("\tAction: Name: %s\n", project->actors[j]->actions[k]->action_name);
+					printf("		Number of events: %d\n", project->actors[j]->actions[k]->events_nb);
+					printf("\t\tEvents:\n");
+					for(n=0; n<project->actors[j]->actions[k]->events_nb;n++){
+						printf("\t\t\t%s\n",project->actors[j]->actions[k]->events[n]);
+					}
 				}
 			}
+			printf("\n");
 		}
-		printf("\n");
+	}
+	else {
+		printf("\"Papify all\" mode is active: every action in every actor will receive the following events\n");
+		printf("		Number of events: %d\n", project->papify_all->events_nb);
+		printf("\t\tEvents:\n");
+		for(n=0; n<project->papify_all->events_nb;n++){
+			printf("\t\t\t%s\n",project->papify_all->events[n]);
+		}
+		printf("\t\tActors found: \n");
+		for(n=0; n<project->actors_nb;n++){
+			printf("\t\t\t%s\n\t\t\t(%s)\n\n",project->actors[n]->actor_name, project->actors[n]->actor_path);
+		}
 	}
 	printf("/////////////////////////////////////////////\n");
 }

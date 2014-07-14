@@ -7,6 +7,7 @@ C_SRCS += \
 ../src/cmake_editor.c \
 ../src/eventLib.c \
 ../src/papify.c \
+../src/papify_everything.c \
 ../src/papify_lib.c \
 ../src/xcf_creator.c 
 
@@ -14,6 +15,7 @@ OBJS += \
 ./src/cmake_editor.o \
 ./src/eventLib.o \
 ./src/papify.o \
+./src/papify_everything.o \
 ./src/papify_lib.o \
 ./src/xcf_creator.o 
 
@@ -21,6 +23,7 @@ C_DEPS += \
 ./src/cmake_editor.d \
 ./src/eventLib.d \
 ./src/papify.d \
+./src/papify_everything.d \
 ./src/papify_lib.d \
 ./src/xcf_creator.d 
 

@@ -20,14 +20,24 @@ int editCMakelists(char *somepath){
 	strcat(cmake_copy_path, ".papi.txt");
 	cmake_copy = fopen(cmake_copy_path,"w"); //this is a temporal file that contains the actor code with the papi code added, will later replace the actual actor
 
-	cmake_add_beginning(cmake_copy);
-
 	int stat_src = 1;
 	int stat_hdr = 1;
 	int stat_dir = 1;
 	int stat_lnk = 1;
+	int stat_beg = 1;
+	int do_not_touch = 0;
 
 	while(fgets(buf,1500, cmake_file)!=NULL) {
+		if(strstr(buf, "# CMakeLists modified by Papify")!=NULL && stat_src){
+			if (DEBUG) printf("Seems like libs/orcc-native/CMakeLists.txt already has Papify included, not touching it..\n");
+			do_not_touch = 1;
+			break;
+		}
+		if(stat_beg){
+			cmake_add_beginning(cmake_copy);
+			fputs(buf, cmake_copy);
+			stat_beg = 0;
+		}
 		if(strstr(buf, "set(orcc_native_sources")!=NULL && stat_src){
 			cmake_addat_closingparenthesis(cmake_file,cmake_copy,"src/eventLib.c");
 			stat_src = 0;
@@ -47,7 +57,13 @@ int editCMakelists(char *somepath){
 		else fputs(buf, cmake_copy);
 	}
 
+	if(do_not_touch){
+		fclose(cmake_file);
+		fclose(cmake_copy);
 
+		remove(cmake_copy_path);
+	}
+	else {
 	fclose(cmake_file);
 	cmake_file =fopen(somepath,"w");
 	fclose(cmake_copy);
@@ -59,13 +75,14 @@ int editCMakelists(char *somepath){
 	fclose(cmake_copy);
 
 	remove(cmake_copy_path);
-
+	}
 
 	return 0;
 }
 
 void cmake_add_beginning(FILE* cmake_copy){
 	fprintf(cmake_copy,
+			"# CMakeLists modified by Papify\n"
 			"########################################\n"
 			"# find papi library\n"
 			"find_library(papi_LIBRARY papi)\n\n"

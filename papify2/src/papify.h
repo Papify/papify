@@ -41,6 +41,7 @@ typedef struct project_s {
 	char *src_path;
 	char *project_path;
 	int *papify; //array same size of actors, if 1, actor will be papified
+	action_s *papify_all;
 	actor_s *actors[];
 } project_s;
 
@@ -70,11 +71,17 @@ void skiplines(FILE* file, char *ref);
 int isblankline(char *line);
 void goto_previous_line();
 const int isxcf(const char *filename);
-void identify_actors(char *mapping_file_path, struct project_s *project);
+int identify_actors(char *mapping_file_path, struct project_s *project);
 int get_actors_num(char *mapping_file_path);
 char *findMappingFile(char *path);
 void free_paths(struct actors_s *actors);
 int create_file(char *somepath, char* papicode);
 
+int find_end_of_function(FILE *actor_src, FILE* actor_cpy, int *open_brackets);
 
+char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int *open_brackets, int *action_number);
+
+int papify_everything(struct project_s *project);
+void papiwrite_init_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, struct action_s *action, int* THREADED);
+void papiwrite_actions_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, struct action_s *action, int* THREADED);
 #endif /* PAPIFY_H_ */
