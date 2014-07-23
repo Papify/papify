@@ -18,12 +18,31 @@
 
 extern int DEBUG;
 
-// USAR LAS NUEVAS ESTRUCTURAS!!!!
-/*typedef struct events_s {
-	char *event_name;
-} events_s;*/
+//NEW SCHOOL
+typedef struct n_events_s {
+	int events_nb;
+	char *events[];
+} n_events_s;
 
-typedef struct action_s {
+typedef struct n_actor_s {
+	char *actor_name;
+	char *actor_path;
+	int actions_nb; //shouldn't be read if papify is NOT set to 1
+	char *action_names[]; //shouldn't be read if papify is NOT set to 1
+} n_actor_s;
+
+typedef struct n_project_s {
+	char *src_path;
+	char *project_path;
+	int *papify; //array same size of actors, if 1, actor will be papified
+	n_events_s *events;
+	int actors_nb;
+	n_actor_s *actors[];
+} n_project_s;
+
+
+//OLD SCHOOL//To be deprecated when NEW SCHOOL is finished
+typedef struct action_s {//to be deprecated soon? TODO
 	int events_nb;
 	char *action_name;
 	char *events[];
@@ -32,8 +51,8 @@ typedef struct action_s {
 typedef struct actor_s {
 	char *actor_name;
 	char *actor_path;
-	int actions_nb; //shouldn't be read if papify is not set to 1
-	action_s *actions[]; //shouldn't be read if papify is not set to 1
+	int actions_nb; //shouldn't be read if papify is NOT set to 1
+	action_s *actions[]; //shouldn't be read if papify is NOT set to 1
 } actor_s;
 
 typedef struct project_s {
@@ -44,16 +63,6 @@ typedef struct project_s {
 	action_s *papify_all;
 	actor_s *actors[];
 } project_s;
-
-/*
-typedef struct actors_s {
-	int num;
-	char *src_path;
-	char *project_path;
-	int *papify; //array same size of actors, if 1, actor will be papified
-	char *actor_path[];
-} actors_s;*/
-
 
 void set_paths(struct project_s *project, char *path);
 void set_num(struct project_s *project, int num);
