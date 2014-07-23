@@ -9,7 +9,7 @@
 
 int DEBUG;
 
-int papify(struct project_s *project){
+int papify(struct n_project_s *project){
 	FILE *actor_src;
 	FILE *actor_cpy;
 	int i;
@@ -17,7 +17,7 @@ int papify(struct project_s *project){
 	char c;
 
 	for(i = 0; i<project->actors_nb;i++){
-		if(project->papify[i] == 1){//if it's scheduled for adding papi code..
+		if(project->actors[i]->papify != 0){//if it's scheduled for adding papi code..
 			if(DEBUG) printf("Creating a backup of %s\n", project->actors[i]->actor_path);
 			if(backup_actors(project->actors[i]->actor_path)==-1){
 				printf("WARNING: Looks like the code for %s has already been manipulated.\nThis might lead to errors in the final output.\nDo you still want to continue? [y/n]\n",project->actors[i]->actor_path);
@@ -43,7 +43,8 @@ int papify(struct project_s *project){
 
 			if(DEBUG) printf("Copying initializes in %s\n", project->actors[i]->actor_path);
 
-			papiwrite(actor_src, actor_cpy, project->actors[i]);
+			if(project->actors[i]->papify==1) papiwrite(actor_src, actor_cpy, project->actors[i], project->events);
+			if(project->actors[i]->papify==2) papiwrite_everything(actor_src, actor_cpy, project->actors[i], project->events);
 
 
 			fclose(actor_src);
@@ -217,7 +218,7 @@ int skip_action(FILE *actor_src, FILE* actor_cpy, int *open_brackets){
 }
 
 
-char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int *open_brackets, int *action_number){
+char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, int *open_brackets, int *action_number){
 	char buf[1500];
 	int i;
 	char *someName;
@@ -234,7 +235,7 @@ char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, i
 				someName = strrchr(someString, ' ')+1;
 				if (DEBUG) printf("\tFound action \"%s\".\n\tChecking if it needs PAPI code..", someName);
 				for(i = 0;i<actor->actions_nb;i++){
-					if(strcmp(someName,actor->actions[i]->action_name)==0) {
+					if(strcmp(someName,actor->action_names[i])==0) {
 						if (DEBUG) printf(" yes, generating.\n");
 						*action_number = i;
 						return someName;
@@ -252,7 +253,7 @@ char* get_next_action(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, i
 	return NULL;
 }
 
-void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int* THREADED){
+void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, n_events_s *events, int* THREADED){
 	int k, i;
 
 	if(DEBUG) printf("Generating Initializing code\n");
@@ -270,14 +271,14 @@ void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int
 	for(i = 0; i < actor->actions_nb; i++){
 		fprintf(actor_cpy,"\tPapi_actions_%s[%d].action_id = malloc(strlen(\"%s\")+1);\n"
 				"\tPapi_actions_%s[%d].action_id = \"%s\";\n",
-				actor->actor_name,i,actor->actions[i]->action_name,actor->actor_name, i,actor->actions[i]->action_name);
+				actor->actor_name,i,actor->action_names[i],actor->actor_name, i,actor->action_names[i]);
 		//old//fprintf(actor_cpy,"\tpapi_output_%s_%s = fopen(\"papi-output/papi_output_%s-%s.csv\",\"w\");\n",actor->actor_name, actor->actions[i]->action_name,actor->actor_name, actor->actions[i]->action_name);
 	}
 
 	//only valid for same amount of events on every action!!!
 	fprintf(actor_cpy,"\tfprintf(papi_output_%s,\"Actor; Action; ",actor->actor_name);
-	for(k=0; k < actor->actions[0]->events_nb; k++){
-		fprintf(actor_cpy,"%s;", actor->actions[0]->events[k]);
+	for(k=0; k < events->events_nb; k++){
+		fprintf(actor_cpy,"%s;", events->event_names[k]);
 	}
 
 	fseek(actor_cpy, -1, SEEK_CUR);
@@ -289,11 +290,10 @@ void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int
 	for(i=0;i<actor->actions_nb;i++){
 		fprintf(actor_cpy,"\tPapi_actions_%s[%d].eventCodeSetSize = %d;\n"
 				"\tPapi_actions_%s[%d].eventCodeSet = malloc(sizeof(unsigned long)*Papi_actions_%s[%d].eventCodeSetSize);\n",
-				actor->actor_name, i, actor->actions[i]->events_nb, actor->actor_name, i, actor->actor_name, i);
+				actor->actor_name, i, events->events_nb, actor->actor_name, i, actor->actor_name, i);
 
-		for(k=0; k < actor->actions[i]->events_nb; k++){
-			fprintf(actor_cpy,"\tPapi_actions_%s[%d].eventCodeSet[%d] = %s;\n",actor->actor_name,i,k,actor->actions[i]->events[k]);
-
+		for(k=0; k < events->events_nb; k++){
+			fprintf(actor_cpy,"\tPapi_actions_%s[%d].eventCodeSet[%d] = %s;\n",actor->actor_name,i,k,events->event_names[k]);
 		}
 		fprintf(actor_cpy,"\tPapi_actions_%s[%d].eventSet = malloc(sizeof(int) * Papi_actions_%s[%d].eventCodeSetSize);\n",actor->actor_name,i,actor->actor_name, i);
 		fprintf(actor_cpy,"\tPapi_actions_%s[%d].eventSet = PAPI_NULL;\n",actor->actor_name,i);
@@ -316,7 +316,7 @@ void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int
 
 	//initializes events
 	for(i=0;i<actor->actions_nb;i++){
-		fprintf(actor_cpy,"\tprintf(\"Creating eventlist for action %s in actor %s\\n\"); //PAPI DEBUG\n",actor->actions[i]->action_name, actor->actor_name); //PAPI DEBUG
+		fprintf(actor_cpy,"\tprintf(\"Creating eventlist for action %s in actor %s\\n\"); //PAPI DEBUG\n",actor->action_names[i], actor->actor_name); //PAPI DEBUG
 		fprintf(actor_cpy,"\tevent_create_eventList(&(Papi_actions_%s[%d].eventSet), Papi_actions_%s[%d].eventCodeSetSize, Papi_actions_%s[%d].eventCodeSet, papi_local_THREAD_ID);\n",actor->actor_name,i,actor->actor_name,i,actor->actor_name,i);
 	}
 
@@ -324,7 +324,7 @@ void papiwrite_init(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int
 
 }
 
-void papiwrite_actions(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int* THREADED){
+void papiwrite_actions(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, n_events_s *events, int* THREADED){
 	char buf[1500];
 	int k, i;
 	char *actionName;
@@ -383,7 +383,7 @@ void papiwrite_actions(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, 
 		//file (csv) output..
 		fprintf(actor_cpy,"\tpapi_output_%s = fopen(\"papi-output/papi_output_%s.csv\",\"a+\");\n",actor->actor_name, actor->actor_name);
 		fprintf(actor_cpy,"\tfprintf(papi_output_%s,\"\\\"%%s\\\";\\\"%%s\\\";",actor->actor_name);
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
+		for(k=0;k<events->events_nb;k++){
 			fprintf(actor_cpy,"\\\"%%lu\\\";");
 		}
 
@@ -394,7 +394,7 @@ void papiwrite_actions(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, 
 		fprintf(actor_cpy,",\n\t\t\"%s\", Papi_actions_%s[%d].action_id,\n", actor->actor_name, actor->actor_name, action_number);
 
 
-		for(k=0;k<actor->actions[action_number]->events_nb;k++){
+		for(k=0;k<events->events_nb;k++){
 			fprintf(actor_cpy,"\t\tPapi_actions_%s[%d].counterValues[%d], \n",actor->actor_name,i,k);
 		}
 
@@ -416,7 +416,7 @@ void papiwrite_actions(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, 
 	}
 }
 
-void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
+void papiwrite(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, struct n_events_s *events){
 	int i, k;
 	char *actionName;
 	int THREADED = 0;
@@ -429,7 +429,7 @@ void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
 		if(DEBUG) printf("Actor is threaded!\n");
 	}
 	fputs("#include \"eventLib.h\" //PAPI\n\n", actor_cpy);
-	fprintf(actor_cpy,"FILE* papi_output_%s;\n",actor->actor_name);
+	fprintf(actor_cpy,"FILE* papi_output_%s; //PAPI\n",actor->actor_name);
 
 	fputs("\n", actor_cpy);
 	fprintf(actor_cpy,"papi_action_s *Papi_actions_%s;//PAPI\n", actor->actor_name);
@@ -440,12 +440,12 @@ void papiwrite(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor){
 	while(fgets(buf,1500, actor_src)!=NULL) {
 			if(strstr(buf, "// Actions")!=NULL && stat_actions){
 				fputs(buf, actor_cpy);
-				papiwrite_actions(actor_src,actor_cpy, actor, &THREADED);
+				papiwrite_actions(actor_src,actor_cpy, actor, events, &THREADED);
 				stat_actions = 0;
 			}
 			else if(strstr(buf, "// Initializes")!=NULL && stat_init){
 				fputs(buf, actor_cpy);
-				papiwrite_init(actor_src,actor_cpy, actor, &THREADED);
+				papiwrite_init(actor_src,actor_cpy, actor, events, &THREADED);
 				stat_init = 0;
 			}
 			else fputs(buf, actor_cpy);
@@ -500,7 +500,7 @@ void free_paths(struct actors_s *actors){
 	free(actors->project_path);
 }
 */
-void set_paths(struct project_s *project, char *path) {
+void set_paths(struct n_project_s *project, char *path) {
 	project->src_path=malloc(sizeof(char*)*25);//malloc(strlen(path)+strlen("/src/")+2);
 	strcpy(project->src_path,path);
 	strcat(project->src_path,"/src/");
@@ -510,11 +510,11 @@ void set_paths(struct project_s *project, char *path) {
 
 
 
-void set_num(struct project_s *project, int num){
+void set_num(struct n_project_s *project, int num){
 	project->actors_nb = num;
 }
 
-void set_actor_path(struct project_s *project, int num, char *name){
+void set_actor_path(struct n_project_s *project, int num, char *name){
 	int size = strlen(name)+strlen(project->src_path)+strlen(".c")+4;
 	project->actors[num]->actor_path = malloc(size);
 	project->actors[num]->actor_name = malloc(strlen(name)+1);
@@ -526,8 +526,8 @@ void set_actor_path(struct project_s *project, int num, char *name){
 		printf("WARNING: File %s.c not found!\n", name);
 }
 
-void set_papify_actor(struct project_s *project, int n, int opt){
-	project->papify[n] = opt;
+void set_papify_actor(struct n_project_s *project, int n, int opt){
+	project->actors[n]->papify = opt;
 }
 
 const int isxcf(const char *filename) {
@@ -603,22 +603,22 @@ int get_actors_num(char *mapping_file_path){
 	return num;
 }
 
-int find_actor(char* name,  struct project_s *project) {
+int find_actor(char* name,  struct n_project_s *project) {
 	int i;
 	for (i=0;i<project->actors_nb;i++){
-		if(strstr(project->actors[i]->actor_path, name)!=NULL)
+		if(strcmp(project->actors[i]->actor_name, name)==0)
 			return i;
 	}
 	return -1;
 }
 
-int identify_actors(char *mapping_file_path, struct project_s *project) {
-	int j, k, n,size_of_config, size_of_partitioning, size_of_partition, size_of_papi, len, actor_num, number_of_actions, number_of_events;
+int identify_actors(char *mapping_file_path, struct n_project_s *project) {
+	int i, j, k, n,size_of_config, size_of_partitioning, size_of_partition, size_of_papi, len, actor_num, number_of_actions, number_of_events;
 	int num = 0;
-	node_t *configuration, *partitioning, *partition, *instance, *papi, *actor_instance, *action, *event;
+	node_t *configuration, *partitioning, *partition, *instance, *papi, *actor_instance, *action, *events, *event_instance, *actors, *action_instance;
 
 	//*actors->actor_path = malloc((actors->num) * sizeof (char *)+1);
-	project->papify_all=NULL;
+
 
 	configuration = roxml_load_doc(mapping_file_path); //a: LIBROXML node http://www.libroxml.net/public-api.html
 	if (configuration == NULL) {
@@ -640,78 +640,73 @@ int identify_actors(char *mapping_file_path, struct project_s *project) {
 		for (k = 0; k < size_of_partition; k++) {
 			instance = roxml_get_chld(partition, NULL, k);
 			if(DEBUG)printf("			Found instance, id = '%s'\n", roxml_get_content(roxml_get_attr(instance, "id", 0), NULL, 0, &len));
-			project->actors[num] = malloc(sizeof(actor_s));//!!!
+			project->actors[num] = malloc(sizeof(n_actor_s));//!!!
 			set_actor_path(project, num++, roxml_get_content(roxml_get_attr(instance, "id", 0), NULL, 0, &len));
 		}
 	}
 
+	if(DEBUG) printf("\tReading Papify config\n");
 	papi = roxml_get_chld(configuration, NULL, 1); //a: This function returns a given child of a node either by name, or the nth child. (node, child name, number of the child to get)
 	size_of_papi = roxml_get_chld_nb(papi); //a: This function return the number of children for a given node
 
+	int mode_papify_all = (size_of_papi == 1)? 2 : 0;
 
-	project->papify = malloc(sizeof(int)*project->actors_nb);
-	for (j=0;j<project->actors_nb;j++){
-		set_papify_actor(project, j, 0);
+	for (i=0;i<project->actors_nb;i++){
+		set_papify_actor(project, i, mode_papify_all);
 	}
 
-	int mode_papify_all = 0;
 
-	for (j = 0; j < size_of_papi; j++) {
-		actor_instance = roxml_get_chld(papi, NULL, j);
-		if(!mode_papify_all && strcmp("papify_all", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len))==0) {
-			mode_papify_all = 1;
-			printf("PAPI code for the following events will be added in EVERY action of EVERY actor\n");
-		}
-		else if(DEBUG) printf("PAPI actor instance, id = '%s'\n", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len));
+	//Reading events
+	events = roxml_get_chld(papi, NULL, 0);
+	int events_nb = roxml_get_chld_nb(events);
+	project->events=malloc(sizeof(n_events_s)+sizeof(char*)*events_nb);
+	project->events->events_nb = events_nb;
+
+	if(DEBUG) printf("\t\tFound %d PAPI events:\n", project->events->events_nb);
+	for (i = 0; i < events_nb; i++) {
+		event_instance = roxml_get_chld(events, NULL, i);
+		project->events->event_names[i] = malloc(sizeof(strlen(roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len)))+1);
+		strcpy(project->events->event_names[i],roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len));
+		if(DEBUG) printf("\t\t\tEvent id = '%s'\n", roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len));
+	}
+
+	if(mode_papify_all) return 1; //no need to read further
+
+	//Reading actors
+	actors = roxml_get_chld(papi, NULL, 1);
+	int actors_nb = roxml_get_chld_nb(actors);
+	int actions_nb;
+	if(DEBUG) printf("\t\tFound %d actors to be modified:\n", actors_nb);
+
+	for (i = 0; i < actors_nb; i++) {
+		actor_instance = roxml_get_chld(actors, NULL, i);
 		actor_num = find_actor(roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len), project);
-		if ((actor_num != -1) || (mode_papify_all == 1)){
-			if (mode_papify_all==0) set_papify_actor(project, actor_num, 1);
-			else {
-				actor_num = 0;
-				set_papify_actor(project, actor_num, 1);
-			}
-
-			if(mode_papify_all){
-				number_of_events = roxml_get_chld_nb(actor_instance);
-				if(DEBUG) printf("	Found %d events\n", number_of_events);
-				project->papify_all = malloc(sizeof(action_s)+sizeof(char*)*number_of_events);
-				project->papify_all->events_nb = number_of_events;
-				for (n = 0; n < number_of_events; n++) {
-					event = roxml_get_chld(actor_instance, NULL, n);
-					project->papify_all->events[n] = malloc(sizeof(strlen(roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len)))+1);
-					strcpy(project->papify_all->events[n],roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len));
-					if(DEBUG) printf("		event id = '%s'\n", roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len));
-				}
-				return 1;
-			}
-
-			number_of_actions = roxml_get_chld_nb(actor_instance);
-			project->actors[actor_num]->actions_nb = number_of_actions;
-			project->actors[actor_num] = realloc(project->actors[actor_num], sizeof(actor_s)+sizeof(action_s*)*number_of_actions);//CHECK FOR REALOC ERRORS
-
-			if(DEBUG) printf("	Found %d actions\n", number_of_actions);
-				for (k = 0; k < number_of_actions; k++) {
-					action = roxml_get_chld(actor_instance, NULL, k);
-					if(DEBUG) printf("		action id = '%s'\n", roxml_get_content(roxml_get_attr(action, "id", 0), NULL, 0, &len));
-					number_of_events = roxml_get_chld_nb(action);
-					project->actors[actor_num]->actions[k] = malloc(sizeof(action_s)+sizeof(char*)*number_of_events);
-					project->actors[actor_num]->actions[k]->events_nb = number_of_events;
-					project->actors[actor_num]->actions[k]->action_name = malloc(strlen(roxml_get_content(roxml_get_attr(action, "id", 0), NULL, 0, &len))+1);
-					strcpy(project->actors[actor_num]->actions[k]->action_name, roxml_get_content(roxml_get_attr(action, "id", 0), NULL, 0, &len));
-					if(DEBUG) printf("			Found %d events\n", number_of_events);
-					for (n = 0; n < number_of_events; n++) {
-						event = roxml_get_chld(action, NULL, n);
-						project->actors[actor_num]->actions[k]->events[n] = malloc(sizeof(strlen(roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len)))+1);
-						strcpy(project->actors[actor_num]->actions[k]->events[n],roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len));
-						if(DEBUG) printf("					event id = '%s'\n", roxml_get_content(roxml_get_attr(event, "id", 0), NULL, 0, &len));
-					}
-				}
+		if (actor_num != -1) {
+			set_papify_actor(project, actor_num, 1);
+			if(DEBUG) printf("\t\t\tActor id = '%s'\n", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len));
+		}
+		else{
+			printf("ERROR: No such actor '%s'\n",roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len));
+			continue;
+		}
+		//Reading actions
+		actions_nb = roxml_get_chld_nb(actor_instance);
+		project->actors[actor_num]->actions_nb = actions_nb;
+		if(actions_nb !=0){
+			if(DEBUG) printf("\t\t\tFound %d actions:\n", actions_nb);
 		}
 		else
-			if (DEBUG) printf("No such actor '%s'\n", roxml_get_content(roxml_get_attr(actor_instance, "id", 0), NULL, 0, &len));
+			if(DEBUG) printf("\t\t\tFor this actor, all actions will be modified\n", actions_nb);
 
+		project->actors[actor_num]=realloc(project->actors[actor_num], sizeof(n_actor_s)+sizeof(char*)*actions_nb);
+		if(actions_nb==0) set_papify_actor(project, actor_num, 2);
+		for (j = 0; j < actions_nb; j++) {
+			action_instance = roxml_get_chld(actor_instance, NULL, j);
+			project->actors[actor_num]->action_names[j] = malloc(sizeof(strlen(roxml_get_content(roxml_get_attr(action_instance, "id", 0), NULL, 0, &len)))+1);
+			strcpy(project->actors[actor_num]->action_names[j],roxml_get_content(roxml_get_attr(action_instance, "id", 0), NULL, 0, &len));
+			if(DEBUG) printf("\t\t\t\t'%s'\n", project->actors[actor_num]->action_names[j]);
+		}
 	}
-
 
 	// release the last allocated buffer even if no pointer is maintained by the user
 	roxml_release(RELEASE_LAST);
@@ -719,6 +714,46 @@ int identify_actors(char *mapping_file_path, struct project_s *project) {
 	roxml_close(configuration);
 
 	return 0;
+}
+
+
+void n_structures_test(struct n_project_s* project){
+	int j,k,n;
+	char papi[4];
+	int max_width, value_to_print;
+	max_width = 8;
+	value_to_print = 1000;
+
+	printf("/////////////////////////////////////////////\nPrinting all content in n_project_s structure:\n\n");
+	printf("Project path: %s\n", project->project_path);
+	printf("Project src path: %s\n", project->src_path);
+	printf("Number of actors: %d\n", project->actors_nb);
+	printf("Number of events: %d\n", project->events->events_nb);
+	printf("\n");
+
+	printf("-Events:\n");
+	for(j=0; j<project->events->events_nb;j++){
+		printf("\t%s\n", project->events->event_names[j]);
+	}
+	printf("\n");
+
+	for(j=0; j<project->actors_nb;j++){
+		printf("-Actor:\tActor name: %s\n\tActor path: %s\n", project->actors[j]->actor_name, project->actors[j]->actor_path);
+		if(project->actors[j]->papify==0) strcpy(papi,"no");
+		else strcpy(papi,"yes");
+		printf("\tPapify mode: %d\n",project->actors[j]->papify);
+		printf("\tPAPI code will be included: %s\n",papi);
+		if(project->actors[j]->papify==2) printf("\t-Actions: ALL\n");
+		else if(project->actors[j]->papify==1) {
+			printf("\tNumber of actions: %d\n", project->actors[j]->actions_nb);
+			printf("\t-Actions:\n");
+			for(k=0; k<project->actors[j]->actions_nb;k++){
+				printf("\t\t%s\n", project->actors[j]->action_names[k]);
+			}
+		}
+		printf("\n");
+	}
+	printf("/////////////////////////////////////////////\n");
 }
 
 void structures_test(struct project_s* project){

@@ -6,18 +6,14 @@
  */
 #include "papify.h"
 
-int papify_everything(struct project_s *project){
+int papify_everything(struct n_project_s *project){
 	FILE *actor_src;
 	FILE *actor_cpy;
 	int i;
 	char actor_cpy_path[500];
 	char c;
 
-	/*for(i = 0; i<project->actors_nb;i++){
-
-	}*/
-
-	structures_test(project);
+	n_structures_test(project);
 
 	for(i = 0; i<project->actors_nb;i++){
 		if(DEBUG) printf("Creating a backup of %s\n", project->actors[i]->actor_path);
@@ -30,7 +26,6 @@ int papify_everything(struct project_s *project){
 				continue;
 			}
 		}
-
 
 		if(DEBUG) printf("Attempting to open %s\n", project->actors[i]->actor_path);
 		actor_src =fopen(project->actors[i]->actor_path,"r");
@@ -45,8 +40,7 @@ int papify_everything(struct project_s *project){
 
 		if(DEBUG) printf("Copying initializes in %s\n", project->actors[i]->actor_path);
 
-
-		papiwrite_everything(actor_src, actor_cpy, project->actors[i], project->papify_all);
+		papiwrite_everything(actor_src, actor_cpy, project->actors[i], project->events);
 
 
 		fclose(actor_src);
@@ -61,10 +55,11 @@ int papify_everything(struct project_s *project){
 
 		remove(actor_cpy_path);
 	}
+
 	return 0;
 }
 
-void papiwrite_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, struct action_s *action){ //action contains the events for every action in every actor
+void papiwrite_everything(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, struct n_events_s *events){
 	int i, k;
 	char *actionName;
 	int THREADED = 0;
@@ -77,7 +72,7 @@ void papiwrite_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *acto
 		if(DEBUG) printf("Actor is threaded!\n");
 	}
 	fputs("#include \"eventLib.h\" //PAPI\n\n", actor_cpy);
-	fprintf(actor_cpy,"FILE* papi_output_%s;\n",actor->actor_name);
+	fprintf(actor_cpy,"FILE* papi_output_%s; //PAPI\n",actor->actor_name);
 
 	fputs("\n", actor_cpy);
 	fprintf(actor_cpy,"papi_action_s *Papi_actions_%s;//PAPI\n", actor->actor_name);
@@ -88,12 +83,12 @@ void papiwrite_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *acto
 	while(fgets(buf,1500, actor_src)!=NULL) {
 			if(strstr(buf, "// Actions")!=NULL && stat_actions){
 				fputs(buf, actor_cpy);
-				papiwrite_actions_everything(actor_src,actor_cpy, actor, action, &THREADED);
+				papiwrite_actions_everything(actor_src,actor_cpy, actor, events, &THREADED);
 				stat_actions = 0;
 			}
 			else if(strstr(buf, "// Initializes")!=NULL && stat_init){
 				fputs(buf, actor_cpy);
-				papiwrite_init_everything(actor_src,actor_cpy, actor, action, &THREADED);
+				papiwrite_init_everything(actor_src,actor_cpy, actor, events, &THREADED);
 				stat_init = 0;
 			}
 			else fputs(buf, actor_cpy);
@@ -101,7 +96,7 @@ void papiwrite_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *acto
 
 }
 
-void papiwrite_init_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, struct action_s *action, int* THREADED){
+void papiwrite_init_everything(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, struct n_events_s *events, int* THREADED){
 	int k, i;
 
 	if(DEBUG) printf("Generating Initializing code\n");
@@ -119,8 +114,8 @@ void papiwrite_init_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s 
 
 	//only valid for same amount of events on every action!!!
 	fprintf(actor_cpy,"\tfprintf(papi_output_%s,\"Actor; Action; ",actor->actor_name);
-	for(k=0; k < action->events_nb; k++){
-		fprintf(actor_cpy,"%s;", action->events[k]);
+	for(k=0; k < events->events_nb; k++){
+		fprintf(actor_cpy,"%s;", events->event_names[k]);
 	}
 
 	fprintf(actor_cpy,"\\n\");\n");
@@ -129,12 +124,12 @@ void papiwrite_init_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s 
 
 	fprintf(actor_cpy,"\tfclose(papi_output_%s);\n",actor->actor_name);
 //
-	fprintf(actor_cpy,"\tPapi_actions_%s->eventCodeSetSize = %d;\n",actor->actor_name, action->events_nb);
+	fprintf(actor_cpy,"\tPapi_actions_%s->eventCodeSetSize = %d;\n",actor->actor_name, events->events_nb);
 	fprintf(actor_cpy,"\tPapi_actions_%s->eventCodeSet = malloc(sizeof(unsigned long)*Papi_actions_%s->eventCodeSetSize);\n",
 			actor->actor_name, actor->actor_name);
 
-	for(k=0; k < action->events_nb; k++){
-		fprintf(actor_cpy,"\tPapi_actions_%s->eventCodeSet[%d] = %s;\n",actor->actor_name,k,action->events[k]);
+	for(k=0; k < events->events_nb; k++){
+		fprintf(actor_cpy,"\tPapi_actions_%s->eventCodeSet[%d] = %s;\n",actor->actor_name,k,events->event_names[k]);
 	}
 	fprintf(actor_cpy,"\tPapi_actions_%s->eventSet = malloc(sizeof(int) * Papi_actions_%s->eventCodeSetSize);\n",actor->actor_name,actor->actor_name);
 	fprintf(actor_cpy,"\tPapi_actions_%s->eventSet = PAPI_NULL;\n",actor->actor_name);
@@ -168,7 +163,7 @@ void copy_upto_end_of_function(FILE *actor_src, FILE* actor_cpy, int *open_brack
 	fseek(actor_cpy, 0-strlen(buf), SEEK_CUR);
 }
 
-char* get_next_action_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, int *open_brackets, int *action_number){
+char* get_next_action_everything(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, int *open_brackets, int *action_number){
 	char buf[1500];
 	char *someName;
 	char *result;
@@ -197,7 +192,7 @@ char* get_next_action_everything(FILE *actor_src, FILE* actor_cpy, struct actor_
 	return NULL;
 }
 
-void papiwrite_actions_everything(FILE *actor_src, FILE* actor_cpy, struct actor_s *actor, struct action_s *action, int* THREADED){
+void papiwrite_actions_everything(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, struct n_events_s *events, int* THREADED){
 	char buf[1500];
 	int k, i;
 	char *actionName;
@@ -216,7 +211,6 @@ void papiwrite_actions_everything(FILE *actor_src, FILE* actor_cpy, struct actor
 			fprintf(actor_cpy, "\tint papi_local_THREAD_ID;\n"
 				"\tpapi_local_THREAD_ID = -1;\n");
 		fprintf(actor_cpy, "\tevent_start(&(Papi_actions_%s->eventSet), papi_local_THREAD_ID); //PAPI\n", actor->actor_name);
-
 		find_end_of_function(actor_src, actor_cpy, &open_brackets);
 		fprintf(actor_cpy, "\t//PAPI\n");
 
@@ -235,7 +229,7 @@ void papiwrite_actions_everything(FILE *actor_src, FILE* actor_cpy, struct actor
 		fprintf(actor_cpy,"\tpapi_output_%s = fopen(\"papi-output/papi_output_%s.csv\",\"a+\");\n",actor->actor_name, actor->actor_name);
 		fprintf(actor_cpy,"\tfprintf(papi_output_%s,\"\\\"%%s\\\";\\\"%%s\\\";",actor->actor_name);
 
-		for(k=0;k<action->events_nb;k++){
+		for(k=0;k<events->events_nb;k++){
 			fprintf(actor_cpy,"\\\"%%lu\\\";");
 		}
 
@@ -246,7 +240,7 @@ void papiwrite_actions_everything(FILE *actor_src, FILE* actor_cpy, struct actor
 		fprintf(actor_cpy,",\n\t\t\"%s\", \"%s\",\n", actor->actor_name, actionName);
 
 
-		for(k=0;k<action->events_nb;k++){
+		for(k=0;k<events->events_nb;k++){
 			fprintf(actor_cpy,"\t\tPapi_actions_%s->counterValues[%d], \n",actor->actor_name,k);
 		}
 

@@ -79,7 +79,7 @@ int papify_main(int argc, char *project_path, char *exec)
 	}
 
 	int actors_num = get_actors_num(mapping_file_path);
-	project_s *project = malloc(sizeof(project_s)+sizeof(actor_s*) * actors_num);
+	n_project_s *project = malloc(sizeof(n_project_s)+sizeof(n_actor_s*) * actors_num);
 
 	set_paths(project, project_path);
 	set_num(project, actors_num);
@@ -87,7 +87,6 @@ int papify_main(int argc, char *project_path, char *exec)
 	if(identify_actors(mapping_file_path, project) == 1) papify_everything(project);
 	else papify(project);
 
-	//structures_test(project);
 
 	//Generating CMakesLists.txt
 	char *somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc-native/CMakeLists.txt")+2);
