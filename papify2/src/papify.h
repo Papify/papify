@@ -40,30 +40,6 @@ typedef struct n_project_s {
 	n_actor_s *actors[];
 } n_project_s;
 
-
-//OLD SCHOOL//To be deprecated when NEW SCHOOL is finished
-typedef struct action_s {//to be deprecated soon? TODO
-	int events_nb;
-	char *action_name;
-	char *events[];
-} action_s;
-
-typedef struct actor_s {
-	char *actor_name;
-	char *actor_path;
-	int actions_nb; //shouldn't be read if papify is NOT set to 1
-	action_s *actions[]; //shouldn't be read if papify is NOT set to 1
-} actor_s;
-
-typedef struct project_s {
-	int actors_nb;
-	char *src_path;
-	char *project_path;
-	int *papify; //array same size of actors, if 1, actor will be papified
-	action_s *papify_all;
-	actor_s *actors[];
-} project_s;
-
 void set_paths(struct n_project_s *project, char *path);
 void set_num(struct n_project_s *project, int num);
 void set_actor_path(struct n_project_s *project, int num, char *name);
