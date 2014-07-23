@@ -1,0 +1,13 @@
+<Papi>
+    <Events> <? mandatory! ?>
+        <Event id="PAPI_TOT_INS"/>
+        <Event id="PAPI_L1_DCM"/>
+    </Events>
+    <Instances> <? optional, if not specified-> all actors, all actions. If specified, only some actors.. ?>
+        <Instance id="someInstance"> 
+            <Action id="receive_data_VCA"/> <? optional, if not specified-> all actions ?>
+        </Instance>
+        <Instance id="someOtherInstance"/>
+        <Instance id="yetAnotherOne"/>
+    </Instances>
+</Papi>
