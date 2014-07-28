@@ -9,8 +9,8 @@
 #ifndef PAPICODE_H_
 #define PAPICODE_H_
 
-#define l_cmakelists 		"papicode_CMakeLists.txt:"
 #define l_eventc 			"papicode_eventc:"
 #define l_eventh 			"papicode_eventh:"
+
 
 #endif /* PAPICODE_H_ */

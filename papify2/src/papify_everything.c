@@ -13,8 +13,6 @@ int papify_everything(struct n_project_s *project){
 	char actor_cpy_path[500];
 	char c;
 
-	n_structures_test(project);
-
 	for(i = 0; i<project->actors_nb;i++){
 		if(DEBUG) printf("Creating a backup of %s\n", project->actors[i]->actor_path);
 		if(backup_actors(project->actors[i]->actor_path)==-1){

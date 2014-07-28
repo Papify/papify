@@ -18,7 +18,6 @@
 
 extern int DEBUG;
 
-//NEW SCHOOL
 typedef struct n_events_s {
 	int events_nb;
 	char *event_names[];

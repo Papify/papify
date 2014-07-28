@@ -649,7 +649,20 @@ int identify_actors(char *mapping_file_path, struct n_project_s *project) {
 	papi = roxml_get_chld(configuration, NULL, 1); //a: This function returns a given child of a node either by name, or the nth child. (node, child name, number of the child to get)
 	size_of_papi = roxml_get_chld_nb(papi); //a: This function return the number of children for a given node
 
-	int mode_papify_all = (size_of_papi == 1)? 2 : 0;
+	int mode_papify_all;
+
+	switch(size_of_papi){
+	case 1:
+			mode_papify_all = 2;
+			break;
+	case 2:
+			mode_papify_all = 0;
+			break;
+	case -1:
+			printf("Papify config not present.");
+			exit(0);
+	}
+
 
 	for (i=0;i<project->actors_nb;i++){
 		set_papify_actor(project, i, mode_papify_all);
