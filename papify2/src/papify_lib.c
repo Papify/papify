@@ -63,12 +63,12 @@ int papify(struct n_project_s *project){
 	return 0;
 }
 
-int create_file(char *somepath, char* papicode){
+int create_file(char *somepath, unsigned char papicode[]){
 	FILE *somefile;
 
 	if((somefile = fopen(somepath,"w"))==NULL) return -1;
 	else{
-		insert_papicode(somefile, papicode);
+		fprintf(somefile, "%s", papicode);
 		fclose(somefile);
 		return 0;
 	}
@@ -461,23 +461,6 @@ void papiwrite(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, struct
 }
 
 
-
-void insert_papicode(FILE* actor_cpy, char *ref){
-	char buf[1500];
-	FILE *papiref;
-	if((papiref =fopen("libs/papicode","r"))==NULL){
-		printf("Error: could not generate file.\n");
-		return;
-	}
-	skiplines(papiref,ref);
-	fgets(buf,1500, papiref);
-		while (strncmp(buf,"//endofcode",11)!=0){
-			fputs(buf, actor_cpy);
-			fgets(buf,1500, papiref);
-		}
-	fputs("\n", actor_cpy);
-	fclose(papiref);
-}
 
 void clone(FILE *actor_src, FILE* actor_cpy) {
 	char buf[1500];

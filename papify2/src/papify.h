@@ -46,7 +46,6 @@ void set_papify_actor(struct n_project_s *project, int n, int opt);
 
 int papify(struct n_project_s *project);
 void papiwrite(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, struct n_events_s *events);
-void insert_papicode(FILE* actor_cpy, char *ref);
 int backup_actors(char *actor_path);
 void clone(FILE *actor_src, FILE* actor_cpy);
 int copy_until(FILE *actor_src, FILE* actor_cpy, char *keyword);
@@ -59,7 +58,7 @@ int identify_actors(char *mapping_file_path, struct n_project_s *project);
 int get_actors_num(char *mapping_file_path);
 char *findMappingFile(char *path);
 void free_paths(struct actors_s *actors);
-int create_file(char *somepath, char* papicode);
+int create_file(char *somepath, unsigned char papicode[]);
 
 int find_end_of_function(FILE *actor_src, FILE* actor_cpy, int *open_brackets);
 

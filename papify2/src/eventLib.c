@@ -210,8 +210,8 @@ void event_start(int *eventSet, int threadID){ //done?
 	retval = PAPI_start( *eventSet );
 	if ( retval != PAPI_OK )
 		test_fail( __FILE__, __LINE__, "PAPI_start",retval );
-	
-    printf("event_start done \n");
+
+    //printf("event_start done \n");
 }
 void overflows_start(int threadID){
 
@@ -259,7 +259,7 @@ void event_stop(int *eventSet, int eventCodeSetSize, long long *PMC, int threadI
 
 //    fclose(eventFile);
 
-    printf("event_stop done \n");
+    //printf("event_stop done \n");
 }
 
 void event_destroy_eventList(int threadID, long long *times_fin) {

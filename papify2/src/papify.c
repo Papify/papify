@@ -11,6 +11,8 @@
  */
 
 #include "papify.h"
+#include "eventLib_h.xxd"
+#include "eventLib_c.xxd"
 int DEBUG = 0;
 
 void printhelp(void) {
@@ -93,20 +95,19 @@ int papify_main(int argc, char *project_path, char *exec)
 	strcpy(somepath,project->project_path);
 	strcat(somepath,"/libs/orcc-native/CMakeLists.txt");
 	if(editCMakelists(somepath)) perror("Could not create CMakeLists.txt.. :(\n");
-	//if(create_file(somepath, l_cmakelists)!=0) printf("Could not create CMakeLists.txt.. :(\n", somepath);
 	free(somepath);
 
 	//Copying eventLib
 	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc-native/src/eventLib.c")+2);
 	strcpy(somepath,project->project_path);
 	strcat(somepath,"/libs/orcc-native/src/eventLib.c");
-	if(create_file(somepath, l_eventc)!=0) perror("Could not create eventLib.c.. maybe the folder doesn't exist?\n");
+	if(create_file(somepath, eventLib_c)!=0) perror("Could not create eventLib.c.. maybe the folder doesn't exist?\n");
 	free(somepath);
 
 	somepath = malloc(strlen(project->project_path)+strlen("/libs/orcc-native/include/eventLib.h")+2);
 	strcpy(somepath,project->project_path);
 	strcat(somepath,"/libs/orcc-native/include/eventLib.h");
-	if(create_file(somepath, l_eventh)!=0) perror("Could not create eventLib.h.. maybe the folder doesn't exist?\n");
+	if(create_file(somepath, eventLib_h)!=0) perror("Could not create eventLib.h.. maybe the folder doesn't exist?\n");
 	free(somepath);
 
 
