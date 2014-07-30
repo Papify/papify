@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Papify by alejoar</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Papify</h1>
+        <p></p>
+
+        <p class="view"><a href="https://github.com/alejoar/papify">View the Project on GitHub <small>alejoar/papify</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/alejoar/papify/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/alejoar/papify/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/alejoar/papify">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a name="papify" class="anchor" href="#papify"><span class="octicon octicon-link"></span></a>Papify</h1>
+
+<h2>
+<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
+
+<p>Papify requires its configuration to be added into the <strong>xcf</strong> file located inside the <em>src</em> directory of your ORCC generated code using the <strong>C backend</strong>. It must be added right after <code>&lt;/Instances&gt;</code> and before <code>&lt;/Configuration&gt;</code>. </p>
+
+<h3>
+<a name="config-examples" class="anchor" href="#config-examples"><span class="octicon octicon-link"></span></a>Config examples</h3>
+
+<h4>
+<a name="example-1" class="anchor" href="#example-1"><span class="octicon octicon-link"></span></a>Example 1</h4>
+
+<pre><code>&lt;Papi&gt;
+    &lt;Events&gt;
+        &lt;Event id="PAPI_TOT_INS"/&gt;
+        &lt;Event id="PAPI_L1_DCM"/&gt;
+        &lt;Event id="PAPI_TOT_CYC"/&gt;
+    &lt;/Events&gt;
+&lt;/Papi&gt;
+</code></pre>
+
+<p>This is the minimun required input parameters. You will always have to specify a set of PAPI events. In this case, as no actors are specified, the events will be coded into every existing actor and action available, with the exception of "isSchedulable_" actions. When using this kind of config, one single event set will be used for all actions inside an actor.</p>
+
+<p>The maximun amount of events you can add depends on your hardware. Papify won't verify this, but PAPI will output an error message if this is the case.</p>
+
+<h4>
+<a name="example-2" class="anchor" href="#example-2"><span class="octicon octicon-link"></span></a>Example 2</h4>
+
+<pre><code>&lt;Papi&gt;
+    &lt;Events&gt;
+        &lt;Event id="PAPI_TOT_INS"/&gt;
+        &lt;Event id="PAPI_L1_DCM"/&gt;
+        &lt;Event id="PAPI_TOT_CYC"/&gt;
+    &lt;/Events&gt;
+    &lt;Instances&gt;
+        &lt;Instance id="SomeActor"/&gt; 
+        &lt;Instance id="SomeOtherActor"/&gt;
+    &lt;/Instances&gt;
+&lt;/Papi&gt;
+</code></pre>
+
+<p>Here actors are specified, meaning that (in this example) only <code>SomeActor</code> and <code>SomeOtherActor</code> will receive PAPI code, and as no actios were specified, PAPI code will include them all with the exception of "isScheludable_" ones. As in the previous example, one single event set per actor is used. You can specify as many actors as you want.</p>
+
+<h4>
+<a name="example-3" class="anchor" href="#example-3"><span class="octicon octicon-link"></span></a>Example 3</h4>
+
+<pre><code>&lt;Papi&gt;
+    &lt;Events&gt;
+        &lt;Event id="PAPI_TOT_INS"/&gt;
+        &lt;Event id="PAPI_L1_DCM"/&gt;
+        &lt;Event id="PAPI_TOT_CYC"/&gt;
+    &lt;/Events&gt;
+    &lt;Instances&gt;
+        &lt;Instance id="SomeActor"&gt; 
+            &lt;Action id="SomeAction"/&gt;
+            &lt;Action id="SomeOtherAction"/&gt;
+        &lt;/Instance&gt;
+        &lt;Instance id="SomeOtherActor"/&gt;
+    &lt;/Instances&gt;
+&lt;/Papi&gt;
+</code></pre>
+
+<p>In this case, there're actions specified for <code>SomeActor</code>, meaning only these actions will be <em>papified</em>. You can specify as many actions as needed.</p>
+
+<p>In this case, <strong>one event set will be used per action</strong>, meaning that if you are selecting two actions, you'll have two event sets in that actor. It has been decided to do it this way for multi-threaded processes, so that every action can be excecuted simultaneously without producing errors in the PAPI output data. Further testing is still required and it is uncertain to me if this is really necesary.</p>
+
+<p>For <code>SomeOtherActor</code>, the case is the same as in example 2.</p>
+
+<p><strong>You can mix the configurations shown in these examples in any way you like. Whenever you specify actions, separated event sets will be used.</strong></p>
+
+<h2>
+<a name="output" class="anchor" href="#output"><span class="octicon octicon-link"></span></a>Output</h2>
+
+<p>Once your <em>papified</em> ORCC application has been excetued, a new directory called <em>papi-output</em> will be created in the current path. For every actor affected by Papify, a <em>csv</em> file will be created with several columns:</p>
+
+<ol>
+<li>Actor name</li>
+<li>Action name</li>
+<li>Event 1</li>
+<li>Event 2</li>
+<li>...</li>
+</ol><p>Being there as many columns as events plus two for actor name and action name.</p>
+
+<p>Example of a piece of an actual output csv file:</p>
+
+<pre><code>Actor; Action; PAPI_TOT_INS;PAPI_L1_DCM;PAPI_TOT_CYC;
+"PCA";"receive_data_PCA_aligned";"22633";"211";"199601"
+"PCA";"receive_data_PCA_aligned";"22410";"564";"20121"
+"PCA";"receive_data_PCA";"22632";"576";"31281"
+"PCA";"receive_data_PCA_aligned";"22410";"564";"20109"
+"PCA";"receive_data_PCA";"22638";"578";"39199"
+"PCA";"receive_data_PCA_aligned";"22412";"555";"22463"
+"PCA";"receive_data_PCA";"22631";"572";"24577"
+"PCA";"receive_data_PCA_aligned";"22411";"556";"22274"
+"PCA";"receive_data_PCA_aligned";"22410";"571";"29546"
+</code></pre>
+
+<p>Note that every line means one execution of the corresponding action.</p>
+
+<h2>
+<a name="data-processing" class="anchor" href="#data-processing"><span class="octicon octicon-link"></span></a>Data processing</h2>
+
+<p>From here on you can use the generated data in whatever way you want, but here are a couple of suggestions:</p>
+
+<h3>
+<a name="1-papiplot" class="anchor" href="#1-papiplot"><span class="octicon octicon-link"></span></a>1. PapiPlot</h3>
+
+<p>PapiPlot provides some basic processing and nice graphs for data generated with Papify. You can find it's repository <a href="https://github.com/panacotta/papiplot">here on GitHub</a></p>
+
+<p>Here's an example of a histogram generated with PapiPlot:
+<img src="https://raw.githubusercontent.com/panacotta/papiplot/master/papiplot/readme/papiplot_overall_.png?raw=true" alt="Alt text" title="Optional Title"></p>
+
+<h3>
+<a name="2-pivot-tables-with-excel" class="anchor" href="#2-pivot-tables-with-excel"><span class="octicon octicon-link"></span></a>2. Pivot tables with Excel</h3>
+
+<p>Excel 2013 comes with great, easy to use features to process data with pivot tables
+[example image pending]</p>
+
+<h2>
+<a name="bugs" class="anchor" href="#bugs"><span class="octicon octicon-link"></span></a>Bugs</h2>
+
+<p>Papify is still in early development and needs lots of testing. Please contact me if you find any bugs or have feature requests you'd like to see added.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/alejoar">alejoar</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
