@@ -6,6 +6,7 @@
 C_SRCS += \
 ../src/cmake_editor.c \
 ../src/eventLib.c \
+../src/original_files_recovery.c \
 ../src/papify.c \
 ../src/papify_everything.c \
 ../src/papify_lib.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 OBJS += \
 ./src/cmake_editor.o \
 ./src/eventLib.o \
+./src/original_files_recovery.o \
 ./src/papify.o \
 ./src/papify_everything.o \
 ./src/papify_lib.o \
@@ -22,6 +24,7 @@ OBJS += \
 C_DEPS += \
 ./src/cmake_editor.d \
 ./src/eventLib.d \
+./src/original_files_recovery.d \
 ./src/papify.d \
 ./src/papify_everything.d \
 ./src/papify_lib.d \

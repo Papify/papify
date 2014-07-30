@@ -21,13 +21,14 @@ void printhelp(void) {
 
 int main (int argc, char **argv) {
 	int xcf_flag = 0;
+	int r_flag = 0; //recovery
 	char *project_path = NULL;
 	int index;
 	int c;
 
 	opterr = 0;
 
-	while ((c = getopt (argc, argv, "vxp:")) != -1) {
+	while ((c = getopt (argc, argv, "hvxrp:")) != -1) {
 		switch (c)
 		{
 			case 'v':
@@ -37,6 +38,12 @@ int main (int argc, char **argv) {
 			case 'x':
 				xcf_flag = 1;
 				break;
+			case 'r':
+				r_flag = 1;
+				break;
+			case 'h':
+				printhelp();
+				exit(0);
 			case 'p':
 				project_path = optarg;
 				break;
@@ -58,7 +65,8 @@ int main (int argc, char **argv) {
 
 	}
 
-	if(xcf_flag) xcf_creator(argc, project_path, argv[0]);
+	if(r_flag) original_file_recovery(project_path);
+	else if(xcf_flag) xcf_creator(argc, project_path, argv[0]);
 	else papify_main(argc, project_path, argv[0]);
 
 	return 0;
@@ -111,7 +119,9 @@ int papify_main(int argc, char *project_path, char *exec)
 	free(somepath);
 
 
-	printf("Papi code successfully added, to recover your original files run blah blah.\nThis program asumes PAPI is already properly installed in the system\n");
+	printf("Papi code successfully added, to recover your original files run:\n"
+			"%s -p %s -r\n"
+			"This program asumes PAPI is already properly installed in the system\n", exec, project_path);
 	//free_paths(actors);
 	free(project);
 	return 0;

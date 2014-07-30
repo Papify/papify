@@ -76,9 +76,9 @@ int create_file(char *somepath, unsigned char papicode[]){
 
 int backup_actors(char *actor_path){
 	char *backup_path;
-	backup_path = malloc(strlen(actor_path)+8);
+	backup_path = malloc(strlen(actor_path)+12);
 	strcpy(backup_path,actor_path);
-	strcat(backup_path,".backup");
+	strcat(backup_path,".papibackup");
 	if( access( backup_path, F_OK ) != -1 ){
 		if (DEBUG) printf("Previous backup found, not overwriting..\n"); //should ask if user wants to recover the backup before applying code
 		return -1;
