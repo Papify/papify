@@ -118,7 +118,7 @@ int papify_main(int argc, char *project_path, char *exec)
 	if(create_file(somepath, eventLib_h)!=0) perror("Could not create eventLib.h.. maybe the folder doesn't exist?\n");
 	free(somepath);
 
-
+//
 	printf("Papi code successfully added, to recover your original files run:\n"
 			"%s -p %s -r\n"
 			"This program asumes PAPI is already properly installed in the system\n", exec, project_path);
