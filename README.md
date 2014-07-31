@@ -1,6 +1,6 @@
 Papify
 ======
-Papify is a tool that helps determine the performance of decoders developed with the [Open RVC-CAL Compiler (ORCC)](http://orcc.sourceforge.net/) using its C backend in order to point the decoder developer into the right direction when it comes to optimization. It uses de [Performance Application Programming Interface (PAPI)](http://icl.cs.utk.edu/papi/), which you need to have [installed](http://icl.cs.utk.edu/projects/papi/presets.html) in the final system where the code will be tested. 
+Papify is a tool that helps determine the performance of decoders developed with the [Open RVC-CAL Compiler (ORCC)](http://orcc.sourceforge.net/) using its C backend in order to point the decoder developer into the right direction when it comes to optimization. It uses de [Performance Application Programming Interface (PAPI)](http://icl.cs.utk.edu/papi/), which you need to have [installed](http://icl.cs.utk.edu/projects/papi/presets.html) in the system where the code will be tested. 
 
 ##Configuration
 Papify requires its configuration to be added into the **xcf** file located inside the *src* directory of your ORCC generated code using the **C backend**. It must be added right after `</Instances>` and before `</Configuration>`. 
