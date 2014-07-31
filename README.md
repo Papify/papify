@@ -1,5 +1,7 @@
 Papify
 ======
+Papify is a tool that helps determine the performance of decoders developed with the ![Open RVC-CAL Compiler (ORCC)](http://orcc.sourceforge.net/) using its C backend. It uses de ![Performance Application Programming Interface (PAPI)](http://icl.cs.utk.edu/papi/), which you need to have ![installed](http://icl.cs.utk.edu/projects/papi/presets.html) in the final system where the code will be tested. 
+
 ##Configuration
 Papify requires its configuration to be added into the **xcf** file located inside the *src* directory of your ORCC generated code using the **C backend**. It must be added right after `</Instances>` and before `</Configuration>`. 
 
@@ -15,7 +17,7 @@ Papify requires its configuration to be added into the **xcf** file located insi
 </Papi>
 ```
 
-This is the minimun required input parameters. You will always have to specify a set of PAPI events. In this case, as no actors are specified, the events will be coded into every existing actor and action available, with the exception of "isSchedulable_" actions. When using this kind of config, one single event set will be used for all actions inside an actor.
+This is the minimun required input parameters. You will always have to specify a set of ![PAPI events](http://icl.cs.utk.edu/projects/papi/presets.html). In this case, as no actors are specified, the events will be coded into every existing actor and action available, with the exception of "isSchedulable_" actions. When using this kind of config, one single event set will be used for all actions inside an actor.
 
 The maximun amount of events you can add depends on your hardware. Papify won't verify this, but PAPI will output an error message if this is the case.
 
