@@ -31,6 +31,8 @@
         <h1>
 <a name="papify" class="anchor" href="#papify"><span class="octicon octicon-link"></span></a>Papify</h1>
 
+<p>Papify is a tool that helps determine the performance of decoders developed with the <a href="http://orcc.sourceforge.net/">Open RVC-CAL Compiler (ORCC)</a> using its C backend in order to point the decoder developer into the right direction when it comes to optimization. It uses de <a href="http://icl.cs.utk.edu/papi/">Performance Application Programming Interface (PAPI)</a>, which you need to have <a href="http://icl.cs.utk.edu/projects/papi/presets.html">installed</a> in the system where the code will be tested. </p>
+
 <h2>
 <a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
 
@@ -51,7 +53,7 @@
 &lt;/Papi&gt;
 </code></pre>
 
-<p>This is the minimun required input parameters. You will always have to specify a set of PAPI events. In this case, as no actors are specified, the events will be coded into every existing actor and action available, with the exception of "isSchedulable_" actions. When using this kind of config, one single event set will be used for all actions inside an actor.</p>
+<p>This is the minimun required input parameters. You will always have to specify a set of <a href="http://icl.cs.utk.edu/projects/papi/presets.html">PAPI events</a>. In this case, as no actors are specified, the events will be coded into every existing actor and action available, with the exception of "isSchedulable_" actions. When using this kind of config, one single event set will be used for all actions inside an actor.</p>
 
 <p>The maximun amount of events you can add depends on your hardware. Papify won't verify this, but PAPI will output an error message if this is the case.</p>
 
