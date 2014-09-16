@@ -162,7 +162,7 @@ void copy_upto_end_of_function(FILE *actor_src, FILE* actor_cpy, int *open_brack
 }
 
 char* get_next_action_everything(FILE *actor_src, FILE* actor_cpy, struct n_actor_s *actor, int *open_brackets, int *action_number){
-	char buf[1500];
+	char buf[1500] = "init";
 	char *someName;
 	char *result;
 	char *someString;

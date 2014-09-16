@@ -16,7 +16,7 @@
 int DEBUG = 0;
 
 void printhelp(void) {
-	printf("here goes the help\n");
+	printf("Please check https://github.com/alejoar/papify\n");
 }
 
 int main (int argc, char **argv) {

@@ -9,7 +9,7 @@
 int editCMakelists(char *somepath){
 	FILE* cmake_file;
 	FILE* cmake_copy;
-	char *cmake_copy_path = malloc (strlen(somepath)+strlen(".papi.txt"));
+	char *cmake_copy_path = malloc (strlen(somepath)+strlen(".papi.txt")+1);
 	char buf[1500];
 
 	make_backup(somepath);

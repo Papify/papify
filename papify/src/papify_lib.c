@@ -528,7 +528,7 @@ char *findMappingFile(char *path) {
     struct dirent *pDirent;
     DIR *pDir;
     int success = 0;
-    char * path_to_src = malloc(strlen(path)+strlen("/src"));
+    char * path_to_src = malloc(strlen(path)+strlen("/src")+2);
     strcpy(path_to_src, path);
     strcat(path_to_src,"/src/");
     pDir = opendir (path_to_src);
@@ -551,13 +551,13 @@ char *findMappingFile(char *path) {
         	break;
         }
     }
-    closedir (pDir);
     //TODO TEMP FIX: +500 SOLVE THIS!
     char *result = malloc(strlen(pDirent->d_name)+strlen(path_to_src)+500); //+1 for the zero-terminator CHECK ERRORS MALLOC
     strcpy(result, path_to_src);
     free(path_to_src);
     strcat(result, "/");
     strcat(result, pDirent->d_name);
+    closedir (pDir);
     if (success) return result;
     else return NULL;
 }
@@ -642,7 +642,7 @@ int identify_actors(char *mapping_file_path, struct n_project_s *project) {
 			mode_papify_all = 0;
 			break;
 	case -1:
-			printf("Papify config not present.");
+			printf("Papify config not present..\n");
 			exit(0);
 	}
 
@@ -661,7 +661,7 @@ int identify_actors(char *mapping_file_path, struct n_project_s *project) {
 	if(DEBUG) printf("\t\tFound %d PAPI events:\n", project->events->events_nb);
 	for (i = 0; i < events_nb; i++) {
 		event_instance = roxml_get_chld(events, NULL, i);
-		project->events->event_names[i] = malloc(sizeof(strlen(roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len)))+1);
+		project->events->event_names[i] = malloc(strlen(roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len))+1);
 		strcpy(project->events->event_names[i],roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len));
 		if(DEBUG) printf("\t\t\tEvent id = '%s'\n", roxml_get_content(roxml_get_attr(event_instance, "id", 0), NULL, 0, &len));
 	}
