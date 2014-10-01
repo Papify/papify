@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.8)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 # Check if papi is properly installed on the system
-find_library(papilib NAMES passpi REQUIRED)
+find_library(papilib NAMES papi REQUIRED)
 if(NOT papilib)
 	message(FATAL_ERROR "The installation of Papi library is required to compile Papify. Please refer to http://icl.cs.utk.edu/papi/ to get more information on how to compile and install Papi.")
 endif()
